@@ -7,7 +7,7 @@ import { BaseStore } from "./base-store";
 import migrations from "../migrations/user-store"
 import { getAppVersion } from "./utils/app-version";
 import { kubeConfigDefaultPath, loadConfig } from "./kube-helpers";
-import { tracker } from "./tracker";
+import { appEventBus } from "./event-bus"
 import logger from "../main/logger";
 import path from 'path';
 
@@ -27,10 +27,11 @@ export interface UserPreferences {
   downloadKubectlBinaries?: boolean;
   downloadBinariesPath?: string;
   kubectlBinariesPath?: string;
+  openAtLogin?: boolean;
 }
 
 export class UserStore extends BaseStore<UserStoreModel> {
-  static readonly defaultTheme: ThemeId = "kontena-dark"
+  static readonly defaultTheme: ThemeId = "lens-dark"
 
   private constructor() {
     super({
@@ -38,14 +39,7 @@ export class UserStore extends BaseStore<UserStoreModel> {
       migrations: migrations,
     });
 
-    // track telemetry availability
-    reaction(() => this.preferences.allowTelemetry, allowed => {
-      tracker.event("telemetry", allowed ? "enabled" : "disabled");
-    });
-
-    // refresh new contexts
-    this.whenLoaded.then(this.refreshNewContexts);
-    reaction(() => this.kubeConfigPath, this.refreshNewContexts);
+    this.handleOnLoad();
   }
 
   @observable lastSeenAppVersion = "0.0.0"
@@ -59,7 +53,30 @@ export class UserStore extends BaseStore<UserStoreModel> {
     colorTheme: UserStore.defaultTheme,
     downloadMirror: "default",
     downloadKubectlBinaries: true,  // Download kubectl binaries matching cluster version
+    openAtLogin: true,
   };
+
+  protected async handleOnLoad() {
+    await this.whenLoaded;
+
+    // refresh new contexts
+    this.refreshNewContexts();
+    reaction(() => this.kubeConfigPath, this.refreshNewContexts);
+
+    if (app) {
+      // track telemetry availability
+      reaction(() => this.preferences.allowTelemetry, allowed => {
+        appEventBus.emit({name: "telemetry", action: allowed ? "enabled" : "disabled"})
+      });
+
+      // open at system start-up
+      reaction(() => this.preferences.openAtLogin, open => {
+        app.setLoginItemSettings({ openAtLogin: open });
+      }, {
+        fireImmediately: true,
+      });
+    }
+  }
 
   get isNewVersion() {
     return semver.gt(getAppVersion(), this.lastSeenAppVersion);
@@ -71,13 +88,14 @@ export class UserStore extends BaseStore<UserStoreModel> {
   }
 
   @action
-  resetTheme() {
+  async resetTheme() {
+    await this.whenLoaded;
     this.preferences.colorTheme = UserStore.defaultTheme;
   }
 
   @action
   saveLastSeenAppVersion() {
-    tracker.event("app", "whats-new-seen")
+    appEventBus.emit({name: "app", action: "whats-new-seen"})
     this.lastSeenAppVersion = getAppVersion();
   }
 

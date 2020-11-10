@@ -37,8 +37,14 @@ jobs:
         displayName: Cache Yarn packages
       - script: make install-deps
         displayName: Install dependencies
+      - script: make build-npm
+        displayName: Generate npm package
+      - script: make build-extensions
+        displayName: Build bundled extensions
       - script: make integration-win
         displayName: Run integration tests
+      - script: make test-extensions
+        displayName: Run In-tree Extension tests
       - script: make build
         condition: "and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))"
         displayName: Build
@@ -74,10 +80,16 @@ jobs:
         condition: eq(variables.CACHE_RESTORED, 'true')
       - script: make install-deps
         displayName: Install dependencies
+      - script: make build-npm
+        displayName: Generate npm package
+      - script: make build-extensions
+        displayName: Build bundled extensions
       - script: make test
         displayName: Run tests
       - script: make integration-mac
         displayName: Run integration tests
+      - script: make test-extensions
+        displayName: Run In-tree Extension tests
       - script: make build
         condition: "and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))"
         displayName: Build
@@ -119,8 +131,14 @@ jobs:
         condition: eq(variables.CACHE_RESTORED, 'true')
       - script: make install-deps
         displayName: Install dependencies
+      - script: make test-extensions
+        displayName: Run In-tree Extension tests
       - script: make lint
         displayName: Lint
+      - script: make build-npm
+        displayName: Generate npm package
+      - script: make build-extensions
+        displayName: Build bundled extensions
       - script: make test
         displayName: Run tests
       - bash: |
@@ -149,6 +167,11 @@ jobs:
         condition: "and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))"
         env:
           GH_TOKEN: $(GH_TOKEN)
+      - script: make publish-npm
+        displayName: Publish npm package
+        condition: "and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))"
+        env:
+          NPM_TOKEN: $(NPM_TOKEN)
       - bash: |
           mkdir -p "$AZURE_CACHE_FOLDER"
           tar -czf "$AZURE_CACHE_FOLDER/yarn-cache.tar.gz" "$YARN_CACHE_FOLDER"

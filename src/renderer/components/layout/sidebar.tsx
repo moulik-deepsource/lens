@@ -27,7 +27,9 @@ import { crdStore } from "../+custom-resources/crd.store";
 import { CrdList, crdResourcesRoute, crdRoute, crdURL } from "../+custom-resources";
 import { CustomResources } from "../+custom-resources/custom-resources";
 import { navigation } from "../../navigation";
+import { clusterPageRegistry } from "../../../extensions/registries/page-registry";
 import { isAllowedResource } from "../../../common/rbac";
+import { Spinner } from "../spinner";
 
 const SidebarContext = React.createContext<SidebarContextValue>({ pinned: false });
 type SidebarContextValue = {
@@ -49,6 +51,10 @@ export class Sidebar extends React.Component<Props> {
   }
 
   renderCustomResources() {
+    if (crdStore.isLoading) {
+      return <Spinner centerHorizontal />
+    }
+
     return Object.entries(crdStore.groups).map(([group, crds]) => {
       const submenus = crds.map((crd) => {
         return {
@@ -79,7 +85,7 @@ export class Sidebar extends React.Component<Props> {
         <div className={cssNames("Sidebar flex column", className, { pinned: isPinned })}>
           <div className="header flex align-center">
             <NavLink exact to="/" className="box grow">
-              <Icon svg="logo-full" className="logo-icon" />
+              <Icon svg="logo-lens" className="logo-icon" />
               <div className="logo-text">Lens</div>
             </NavLink>
             <Icon
@@ -183,6 +189,20 @@ export class Sidebar extends React.Component<Props> {
             >
               {this.renderCustomResources()}
             </SidebarNavItem>
+            {clusterPageRegistry.getItems().map(({ path, title, url = String(path), hideInMenu, components: { MenuIcon } }) => {
+              if (!MenuIcon || hideInMenu) {
+                return;
+              }
+              return (
+                <SidebarNavItem
+                  key={url} id={`sidebar_item_${url}`}
+                  url={url}
+                  routePath={path}
+                  text={title}
+                  icon={<MenuIcon />}
+                />
+              )
+            })}
           </div>
         </div>
       </SidebarContext.Provider>

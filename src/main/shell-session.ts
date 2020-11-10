@@ -9,7 +9,7 @@ import { Cluster } from "./cluster"
 import { ClusterPreferences } from "../common/cluster-store";
 import { helmCli } from "./helm/helm-cli"
 import { isWindows } from "../common/vars";
-import { tracker } from "../common/tracker";
+import { appEventBus } from "../common/event-bus"
 import { userStore } from "../common/user-store";
 
 export class ShellSession extends EventEmitter {
@@ -38,7 +38,7 @@ export class ShellSession extends EventEmitter {
 
   public async open() {
     this.kubectlBinDir = await this.kubectl.binDir()
-    const pathFromPreferences = userStore.preferences.kubectlBinariesPath || Kubectl.bundledKubectlPath
+    const pathFromPreferences = userStore.preferences.kubectlBinariesPath || this.kubectl.getBundledPath()
     this.kubectlPathDir = userStore.preferences.downloadKubectlBinaries ? this.kubectlBinDir : path.dirname(pathFromPreferences)
     this.helmBinDir = helmCli.getBinaryDir()
     const env = await this.getCachedShellEnv()
@@ -58,7 +58,7 @@ export class ShellSession extends EventEmitter {
     this.closeWebsocketOnProcessExit()
     this.exitProcessOnWebsocketClose()
 
-    tracker.event("shell", "open")
+    appEventBus.emit({name: "shell", action: "open"})
   }
 
   protected cwd(): string {

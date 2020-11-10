@@ -5,7 +5,9 @@ import { defineGlobal } from "./utils/defineGlobal";
 
 export const isMac = process.platform === "darwin"
 export const isWindows = process.platform === "win32"
+export const isLinux = process.platform === "linux"
 export const isDebugging = process.env.DEBUG === "true";
+export const isSnap = !!process.env["SNAP"]
 export const isProduction = process.env.NODE_ENV === "production"
 export const isTestEnv = !!process.env.JEST_WORKER_ID;
 export const isDevelopment = !isTestEnv && !isProduction;
@@ -20,6 +22,7 @@ export const mainDir = path.join(contextDir, "src/main");
 export const rendererDir = path.join(contextDir, "src/renderer");
 export const htmlTemplate = path.resolve(rendererDir, "template.html");
 export const sassCommonVars = path.resolve(rendererDir, "components/vars.scss");
+export const webpackDevServerPort = 9009
 
 // Special runtime paths
 defineGlobal("__static", {

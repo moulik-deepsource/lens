@@ -23,19 +23,23 @@ import { eventRoute } from "./+events";
 import { Apps, appsRoute } from "./+apps";
 import { KubeObjectDetails } from "./kube-object/kube-object-details";
 import { AddRoleBindingDialog } from "./+user-management-roles-bindings";
-import { PodLogsDialog } from "./+workloads-pods/pod-logs-dialog";
 import { DeploymentScaleDialog } from "./+workloads-deployments/deployment-scale-dialog";
 import { CronJobTriggerDialog } from "./+workloads-cronjobs/cronjob-trigger-dialog";
 import { CustomResources } from "./+custom-resources/custom-resources";
 import { crdRoute } from "./+custom-resources";
 import { isAllowedResource } from "../../common/rbac";
+import { MainLayout } from "./layout/main-layout";
 import { ErrorBoundary } from "./error-boundary";
 import { Terminal } from "./dock/terminal";
 import { getHostedCluster, getHostedClusterId } from "../../common/cluster-store";
 import logger from "../../main/logger";
 import { clusterIpc } from "../../common/cluster-ipc";
 import { webFrame } from "electron";
-import { MainLayout } from "./layout/main-layout";
+import { clusterPageRegistry } from "../../extensions/registries/page-registry";
+import { DynamicPage } from "../../extensions/dynamic-page";
+import { extensionLoader } from "../../extensions/extension-loader";
+import { appEventBus } from "../../common/event-bus";
+import whatInput from 'what-input';
 
 @observer
 export class App extends React.Component {
@@ -44,8 +48,17 @@ export class App extends React.Component {
     const clusterId = getHostedClusterId();
     logger.info(`[APP]: Init dashboard, clusterId=${clusterId}, frameId=${frameId}`)
     await Terminal.preloadFonts()
+
     await clusterIpc.setFrameId.invokeFromRenderer(clusterId, frameId);
     await getHostedCluster().whenReady; // cluster.activate() is done at this point
+    extensionLoader.loadOnClusterRenderer();
+    appEventBus.emit({name: "cluster", action: "open", params: {
+      clusterId: clusterId
+    }})
+    window.addEventListener("online", () => {
+      window.location.reload()
+    })
+    whatInput.ask() // Start to monitor user input device
   }
 
   get startURL() {
@@ -73,16 +86,17 @@ export class App extends React.Component {
                 <Route component={CustomResources} {...crdRoute}/>
                 <Route component={UserManagement} {...usersManagementRoute}/>
                 <Route component={Apps} {...appsRoute}/>
+                {clusterPageRegistry.getItems().map(page => {
+                  return <Route {...page} key={String(page.path)} render={() => <DynamicPage page={page}/>}/>
+                })}
                 <Redirect exact from="/" to={this.startURL}/>
                 <Route component={NotFound}/>
-              </Switch>
-            </MainLayout>
+              </Switch></MainLayout>
             <Notifications/>
             <ConfirmDialog/>
             <KubeObjectDetails/>
             <KubeConfigDialog/>
             <AddRoleBindingDialog/>
-            <PodLogsDialog/>
             <DeploymentScaleDialog/>
             <CronJobTriggerDialog/>
           </ErrorBoundary>

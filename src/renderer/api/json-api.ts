@@ -1,7 +1,7 @@
 // Base http-service / json-api class
 
 import { stringify } from "querystring";
-import { EventEmitter } from "../utils/eventEmitter";
+import { EventEmitter } from "../../common/event-emitter";
 import { cancelableFetch } from "../utils/cancelableFetch";
 
 export interface JsonApiData {
@@ -64,7 +64,7 @@ export class JsonApi<D = JsonApiData, P extends JsonApiParams = JsonApiParams> {
   }
 
   patch<T = D>(path: string, params?: P, reqInit: RequestInit = {}) {
-    return this.request<T>(path, params, { ...reqInit, method: "patch" });
+    return this.request<T>(path, params, { ...reqInit, method: "PATCH" });
   }
 
   del<T = D>(path: string, params?: P, reqInit: RequestInit = {}) {

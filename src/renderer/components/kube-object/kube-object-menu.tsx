@@ -6,6 +6,7 @@ import { editResourceTab } from "../dock/edit-resource.store";
 import { MenuActions, MenuActionsProps } from "../menu/menu-actions";
 import { hideDetails } from "../../navigation";
 import { apiManager } from "../../api/api-manager";
+import { kubeObjectMenuRegistry } from "../../../extensions/registries/kube-object-menu-registry";
 
 export interface KubeObjectMenuProps<T extends KubeObject = any> extends MenuActionsProps {
   object: T;
@@ -56,15 +57,23 @@ export class KubeObjectMenu extends React.Component<KubeObjectMenuProps> {
 
   render() {
     const { remove, update, renderRemoveMessage, isEditable, isRemovable } = this;
-    const { className, object, editable, removable, ...menuProps } = this.props;
+    const { className, object, editable, removable, toolbar, ...menuProps } = this.props;
+    if (!object) return null;
+
+    const menuItems = kubeObjectMenuRegistry.getItemsForKind(object.kind, object.apiVersion).map((item, index) => {
+      return <item.components.MenuItem object={object} key={`menu-item-${index}`} toolbar={toolbar} />
+    })
     return (
       <MenuActions
         className={cssNames("KubeObjectMenu", className)}
         updateAction={isEditable ? update : undefined}
         removeAction={isRemovable ? remove : undefined}
         removeConfirmationMessage={renderRemoveMessage}
+        toolbar={toolbar}
         {...menuProps}
-      />
+      >
+        {menuItems}
+      </MenuActions>
     )
   }
 }

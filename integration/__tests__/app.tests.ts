@@ -1,6 +1,6 @@
 /*
   Cluster tests are run if there is a pre-existing minikube cluster. Before running cluster tests the TEST_NAMESPACE
-  namespace is removed, if it exists, from the minikube cluster. Resources are created as part of the cluster tests in the 
+  namespace is removed, if it exists, from the minikube cluster. Resources are created as part of the cluster tests in the
   TEST_NAMESPACE namespace. This is done to minimize destructive impact of the cluster tests on an existing minikube
   cluster and vice versa.
 */
@@ -8,8 +8,8 @@ import { Application } from "spectron"
 import * as util from "../helpers/utils"
 import { spawnSync } from "child_process"
 
-const describeif = (condition : boolean) => condition ? describe : describe.skip
-const itif = (condition : boolean) => condition ? it : it.skip
+const describeif = (condition: boolean) => condition ? describe : describe.skip
+const itif = (condition: boolean) => condition ? it : it.skip
 
 jest.setTimeout(60000)
 
@@ -29,7 +29,7 @@ describe("Lens integration tests", () => {
   }
 
   const clickWhatsNew = async (app: Application) => {
-    await app.client.waitUntilTextExists("h1", "What's new")
+    await app.client.waitUntilTextExists("h1", "What's new?")
     await app.client.click("button.primary")
     await app.client.waitUntilTextExists("h1", "Welcome")
   }
@@ -47,17 +47,23 @@ describe("Lens integration tests", () => {
       await clickWhatsNew(app)
     })
 
-    // Todo figure out how to access main menu to get these to work
-    it.skip('shows "add cluster"', async () => {
-      await app.client.keys(['Shift', 'Meta', 'A'])
+    it('shows "add cluster"', async () => {
+      await app.electron.ipcRenderer.send('test-menu-item-click', "File", "Add Cluster")
       await app.client.waitUntilTextExists("h2", "Add Cluster")
-      await app.client.keys(['Shift', 'Meta'])
     })
 
-    it.skip('shows "preferences"', async () => {
-      await app.client.keys(['Meta', ','])
-      await app.client.waitUntilTextExists("h2", "Preferences")
-      await app.client.keys('Meta')
+    describe("preferences page", () => {
+      it('shows "preferences"', async () => {
+        let appName: string = process.platform === "darwin" ? "Lens" : "File"
+        await app.electron.ipcRenderer.send('test-menu-item-click', appName, "Preferences")
+        await app.client.waitUntilTextExists("h2", "Preferences")
+      })
+
+      it('ensures helm repos', async () => {
+        await app.client.waitUntilTextExists("div.repos #message-stable", "stable") // wait for the helm-cli to fetch the stable repo
+        await app.client.click("#HelmRepoSelect") // click the repo select to activate the drop-down
+        await app.client.waitUntilTextExists("div.Select__option", "")  // wait for at least one option to appear (any text)
+      })
     })
 
     it.skip('quits Lens"', async () => {
@@ -140,7 +146,7 @@ describe("Lens integration tests", () => {
         await addCluster()
       }
     }
-  
+
     describe("cluster pages", () => {
 
       beforeAll(appStartAddCluster, 40000)
@@ -150,8 +156,8 @@ describe("Lens integration tests", () => {
           return util.tearDown(app)
         }
       })
-  
-      const tests : {
+
+      const tests: {
         drawer?: string
         drawerId?: string
         pages: {
@@ -160,244 +166,242 @@ describe("Lens integration tests", () => {
           expectedSelector: string,
           expectedText: string
         }[]
-      }[] = [
-        {
-          drawer: "",
-          drawerId: "",
-          pages: [ {
-            name: "Cluster",
-            href: "cluster",
-            expectedSelector: "div.ClusterNoMetrics p",
-            expectedText: "Metrics are not available due"
-          }]
+      }[] = [{
+        drawer: "",
+        drawerId: "",
+        pages: [{
+          name: "Cluster",
+          href: "cluster",
+          expectedSelector: "div.Cluster div.label",
+          expectedText: "Master"
+        }]
+      },
+      {
+        drawer: "",
+        drawerId: "",
+        pages: [{
+          name: "Nodes",
+          href: "nodes",
+          expectedSelector: "h5.title",
+          expectedText: "Nodes"
+        }]
+      },
+      {
+        drawer: "Workloads",
+        drawerId: "workloads",
+        pages: [{
+          name: "Overview",
+          href: "workloads",
+          expectedSelector: "h5.box",
+          expectedText: "Overview"
         },
         {
-          drawer: "",
-          drawerId: "",
-          pages: [ {
-            name: "Nodes",
-            href: "nodes",
-            expectedSelector: "h5.title",
-            expectedText: "Nodes"
-          }]
+          name: "Pods",
+          href: "pods",
+          expectedSelector: "h5.title",
+          expectedText: "Pods"
         },
         {
-          drawer: "Workloads",
-          drawerId: "workloads",
-          pages: [ {
-            name: "Overview",
-            href: "workloads",
-            expectedSelector: "h5.box",
-            expectedText: "Overview"
-          },
-          {
-            name: "Pods",
-            href: "pods",
-            expectedSelector: "h5.title",
-            expectedText: "Pods"
-          },
-          {
-            name: "Deployments",
-            href: "deployments",
-            expectedSelector: "h5.title",
-            expectedText: "Deployments"
-          },
-          {
-            name: "DaemonSets",
-            href: "daemonsets",
-            expectedSelector: "h5.title",
-            expectedText: "Daemon Sets"
-          },
-          {
-            name: "StatefulSets",
-            href: "statefulsets",
-            expectedSelector: "h5.title",
-            expectedText: "Stateful Sets"
-          },
-          {
-            name: "Jobs",
-            href: "jobs",
-            expectedSelector: "h5.title",
-            expectedText: "Jobs"
-          },
-          {
-            name: "CronJobs",
-            href: "cronjobs",
-            expectedSelector: "h5.title",
-            expectedText: "Cron Jobs"
-          } ]
+          name: "Deployments",
+          href: "deployments",
+          expectedSelector: "h5.title",
+          expectedText: "Deployments"
         },
         {
-          drawer: "Configuration",
-          drawerId: "config",
-          pages: [ {
-            name: "ConfigMaps",
-            href: "configmaps",
-            expectedSelector: "h5.title",
-            expectedText: "Config Maps"
-          },
-          {
-            name: "Secrets",
-            href: "secrets",
-            expectedSelector: "h5.title",
-            expectedText: "Secrets"
-          },
-          {
-            name: "Resource Quotas",
-            href: "resourcequotas",
-            expectedSelector: "h5.title",
-            expectedText: "Resource Quotas"
-          },
-          {
-            name: "HPA",
-            href: "hpa",
-            expectedSelector: "h5.title",
-            expectedText: "Horizontal Pod Autoscalers"
-          },
-          {
-            name: "Pod Disruption Budgets",
-            href: "poddisruptionbudgets",
-            expectedSelector: "h5.title",
-            expectedText: "Pod Disruption Budgets"
-          } ]
+          name: "DaemonSets",
+          href: "daemonsets",
+          expectedSelector: "h5.title",
+          expectedText: "Daemon Sets"
         },
         {
-          drawer: "Network",
-          drawerId: "networks",
-          pages: [ {
-            name: "Services",
-            href: "services",
-            expectedSelector: "h5.title",
-            expectedText: "Services"
-          },
-          {
-            name: "Endpoints",
-            href: "endpoints",
-            expectedSelector: "h5.title",
-            expectedText: "Endpoints"
-          },
-          {
-            name: "Ingresses",
-            href: "ingresses",
-            expectedSelector: "h5.title",
-            expectedText: "Ingresses"
-          },
-          {
-            name: "Network Policies",
-            href: "network-policies",
-            expectedSelector: "h5.title",
-            expectedText: "Network Policies"
-          } ]
+          name: "StatefulSets",
+          href: "statefulsets",
+          expectedSelector: "h5.title",
+          expectedText: "Stateful Sets"
         },
         {
-          drawer: "Storage",
-          drawerId: "storage",
-          pages: [ {
-            name: "Persistent Volume Claims",
-            href: "persistent-volume-claims",
-            expectedSelector: "h5.title",
-            expectedText: "Persistent Volume Claims"
-          },
-          {
-            name: "Persistent Volumes",
-            href: "persistent-volumes",
-            expectedSelector: "h5.title",
-            expectedText: "Persistent Volumes"
-          },
-          {
-            name: "Storage Classes",
-            href: "storage-classes",
-            expectedSelector: "h5.title",
-            expectedText: "Storage Classes"
-          } ]
+          name: "Jobs",
+          href: "jobs",
+          expectedSelector: "h5.title",
+          expectedText: "Jobs"
         },
         {
-          drawer: "",
-          drawerId: "",
-          pages: [ {
-            name: "Namespaces",
-            href: "namespaces",
-            expectedSelector: "h5.title",
-            expectedText: "Namespaces"
-          }]
+          name: "CronJobs",
+          href: "cronjobs",
+          expectedSelector: "h5.title",
+          expectedText: "Cron Jobs"
+        }]
+      },
+      {
+        drawer: "Configuration",
+        drawerId: "config",
+        pages: [{
+          name: "ConfigMaps",
+          href: "configmaps",
+          expectedSelector: "h5.title",
+          expectedText: "Config Maps"
         },
         {
-          drawer: "",
-          drawerId: "",
-          pages: [ {
-            name: "Events",
-            href: "events",
-            expectedSelector: "h5.title",
-            expectedText: "Events"
-          }]
+          name: "Secrets",
+          href: "secrets",
+          expectedSelector: "h5.title",
+          expectedText: "Secrets"
         },
         {
-          drawer: "Apps",
-          drawerId: "apps",
-          pages: [ {
-            name: "Charts",
-            href: "apps/charts",
-            expectedSelector: "div.HelmCharts input",
-            expectedText: ""
-          },
-          {
-            name: "Releases",
-            href: "apps/releases",
-            expectedSelector: "h5.title",
-            expectedText: "Releases"
-          } ]
+          name: "Resource Quotas",
+          href: "resourcequotas",
+          expectedSelector: "h5.title",
+          expectedText: "Resource Quotas"
         },
         {
-          drawer: "Access Control",
-          drawerId: "users",
-          pages: [ {
-            name: "Service Accounts",
-            href: "service-accounts",
-            expectedSelector: "h5.title",
-            expectedText: "Service Accounts"
-          },
-          {
-            name: "Role Bindings",
-            href: "role-bindings",
-            expectedSelector: "h5.title",
-            expectedText: "Role Bindings"
-          },
-          {
-            name: "Roles",
-            href: "roles",
-            expectedSelector: "h5.title",
-            expectedText: "Roles"
-          },
-          {
-            name: "Pod Security Policies",
-            href: "pod-security-policies",
-            expectedSelector: "h5.title",
-            expectedText: "Pod Security Policies"
-          } ]
+          name: "HPA",
+          href: "hpa",
+          expectedSelector: "h5.title",
+          expectedText: "Horizontal Pod Autoscalers"
         },
         {
-          drawer: "Custom Resources",
-          drawerId: "custom-resources",
-          pages: [ {
-            name: "Definitions",
-            href: "crd/definitions",
-            expectedSelector: "h5.title",
-            expectedText: "Custom Resources"
-          } ]
+          name: "Pod Disruption Budgets",
+          href: "poddisruptionbudgets",
+          expectedSelector: "h5.title",
+          expectedText: "Pod Disruption Budgets"
+        }]
+      },
+      {
+        drawer: "Network",
+        drawerId: "networks",
+        pages: [{
+          name: "Services",
+          href: "services",
+          expectedSelector: "h5.title",
+          expectedText: "Services"
         },
-      ];
+        {
+          name: "Endpoints",
+          href: "endpoints",
+          expectedSelector: "h5.title",
+          expectedText: "Endpoints"
+        },
+        {
+          name: "Ingresses",
+          href: "ingresses",
+          expectedSelector: "h5.title",
+          expectedText: "Ingresses"
+        },
+        {
+          name: "Network Policies",
+          href: "network-policies",
+          expectedSelector: "h5.title",
+          expectedText: "Network Policies"
+        }]
+      },
+      {
+        drawer: "Storage",
+        drawerId: "storage",
+        pages: [{
+          name: "Persistent Volume Claims",
+          href: "persistent-volume-claims",
+          expectedSelector: "h5.title",
+          expectedText: "Persistent Volume Claims"
+        },
+        {
+          name: "Persistent Volumes",
+          href: "persistent-volumes",
+          expectedSelector: "h5.title",
+          expectedText: "Persistent Volumes"
+        },
+        {
+          name: "Storage Classes",
+          href: "storage-classes",
+          expectedSelector: "h5.title",
+          expectedText: "Storage Classes"
+        }]
+      },
+      {
+        drawer: "",
+        drawerId: "",
+        pages: [{
+          name: "Namespaces",
+          href: "namespaces",
+          expectedSelector: "h5.title",
+          expectedText: "Namespaces"
+        }]
+      },
+      {
+        drawer: "",
+        drawerId: "",
+        pages: [{
+          name: "Events",
+          href: "events",
+          expectedSelector: "h5.title",
+          expectedText: "Events"
+        }]
+      },
+      {
+        drawer: "Apps",
+        drawerId: "apps",
+        pages: [{
+          name: "Charts",
+          href: "apps/charts",
+          expectedSelector: "div.HelmCharts input",
+          expectedText: ""
+        },
+        {
+          name: "Releases",
+          href: "apps/releases",
+          expectedSelector: "h5.title",
+          expectedText: "Releases"
+        }]
+      },
+      {
+        drawer: "Access Control",
+        drawerId: "users",
+        pages: [{
+          name: "Service Accounts",
+          href: "service-accounts",
+          expectedSelector: "h5.title",
+          expectedText: "Service Accounts"
+        },
+        {
+          name: "Role Bindings",
+          href: "role-bindings",
+          expectedSelector: "h5.title",
+          expectedText: "Role Bindings"
+        },
+        {
+          name: "Roles",
+          href: "roles",
+          expectedSelector: "h5.title",
+          expectedText: "Roles"
+        },
+        {
+          name: "Pod Security Policies",
+          href: "pod-security-policies",
+          expectedSelector: "h5.title",
+          expectedText: "Pod Security Policies"
+        }]
+      },
+      {
+        drawer: "Custom Resources",
+        drawerId: "custom-resources",
+        pages: [{
+          name: "Definitions",
+          href: "crd/definitions",
+          expectedSelector: "h5.title",
+          expectedText: "Custom Resources"
+        }]
+      }];
       tests.forEach(({ drawer = "", drawerId = "", pages }) => {
         if (drawer !== "") {
           it(`shows ${drawer} drawer`, async () => {
             expect(clusterAdded).toBe(true)
             await app.client.click(`.sidebar-nav #${drawerId} span.link-text`)
-            await app.client.waitUntilTextExists(`a[href="/${pages[0].href}"]`, pages[0].name)
+            await app.client.waitUntilTextExists(`a[href^="/${pages[0].href}"]`, pages[0].name)
           })
-        } 
-        pages.forEach(({name, href, expectedSelector, expectedText}) => {
+        }
+        pages.forEach(({ name, href, expectedSelector, expectedText }) => {
           it(`shows ${drawer}->${name} page`, async () => {
             expect(clusterAdded).toBe(true)
-            await app.client.click(`a[href="/${href}"]`)
+            await app.client.click(`a[href^="/${href}"]`)
             await app.client.waitUntilTextExists(expectedSelector, expectedText)
           })
         })
@@ -406,10 +410,44 @@ describe("Lens integration tests", () => {
           it(`hides ${drawer} drawer`, async () => {
             expect(clusterAdded).toBe(true)
             await app.client.click(`.sidebar-nav #${drawerId} span.link-text`)
-            await expect(app.client.waitUntilTextExists(`a[href="/${pages[0].href}"]`, pages[0].name, 100)).rejects.toThrow()
+            await expect(app.client.waitUntilTextExists(`a[href^="/${pages[0].href}"]`, pages[0].name, 100)).rejects.toThrow()
           })
         }
-      }) 
+      })
+    })
+
+    describe("viewing pod logs", () => {
+      beforeEach(appStartAddCluster, 40000)
+
+      afterEach(async () => {
+        if (app && app.isRunning()) {
+          return util.tearDown(app)
+        }
+      })
+
+      it(`shows a logs for a pod`, async () => {
+        expect(clusterAdded).toBe(true)
+        // Go to Pods page
+        await app.client.click(".sidebar-nav #workloads span.link-text")
+        await app.client.waitUntilTextExists('a[href^="/pods"]', "Pods")
+        await app.client.click('a[href^="/pods"]')
+        await app.client.waitUntilTextExists("div.TableCell", "kube-apiserver")
+        // Open logs tab in dock
+        await app.client.click(".list .TableRow:first-child")
+        await app.client.waitForVisible(".Drawer")
+        await app.client.click(".drawer-title .Menu li:nth-child(2)")
+        // Check if controls are available
+        await app.client.waitForVisible(".PodLogs .VirtualList")
+        await app.client.waitForVisible(".PodLogControls")
+        await app.client.waitForVisible(".PodLogControls .SearchInput")
+        await app.client.waitForVisible(".PodLogControls .SearchInput input")
+        // Search for semicolon
+        await app.client.keys(":")
+        await app.client.waitForVisible(".PodLogs .list span.active")
+        // Click through controls
+        await app.client.click(".PodLogControls .timestamps-icon")
+        await app.client.click(".PodLogControls .undo-icon")
+      })
     })
 
     describe("cluster operations", () => {
@@ -420,7 +458,7 @@ describe("Lens integration tests", () => {
           return util.tearDown(app)
         }
       })
-  
+
       it('shows default namespace', async () => {
         expect(clusterAdded).toBe(true)
         await app.client.click('a[href="/namespaces"]')
@@ -442,8 +480,8 @@ describe("Lens integration tests", () => {
       it(`creates a pod in ${TEST_NAMESPACE} namespace`, async () => {
         expect(clusterAdded).toBe(true)
         await app.client.click(".sidebar-nav #workloads span.link-text")
-        await app.client.waitUntilTextExists('a[href="/pods"]', "Pods")
-        await app.client.click('a[href="/pods"]')
+        await app.client.waitUntilTextExists('a[href^="/pods"]', "Pods")
+        await app.client.click('a[href^="/pods"]')
         await app.client.waitUntilTextExists("div.TableCell", "kube-apiserver")
         await app.client.click('.Icon.new-dock-tab')
         await app.client.waitUntilTextExists("li.MenuItem.create-resource-tab", "Create resource")
@@ -468,6 +506,6 @@ describe("Lens integration tests", () => {
         await app.client.click(".name=nginx-create-pod-test")
         await app.client.waitUntilTextExists("div.drawer-title-text", "Pod: nginx-create-pod-test")
       })
-    })    
-  })    
+    })
+  })
 })
